@@ -1,0 +1,25 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# local PCAPs / outputs
+*.pcap
+*.pcapng
+*.cap
+report/
+carved/
+carved_http/
+streams/
+*.log
+
+# packaging
+dist/
+build/
+*.egg-info/
+
+# editor
+.vscode/
+.idea/
+.DS_Store
