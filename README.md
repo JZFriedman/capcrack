@@ -1,4 +1,4 @@
-# ctfpcap
+# capcrack
 
 A CTF-focused PCAP triage helper.
 
