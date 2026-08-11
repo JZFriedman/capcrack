@@ -181,4 +181,44 @@ def run_dns(pcap):
     for domain, count in base_domain_counts.most_common(15):
         unique_count = len(unique_subdomains[domain])
         print(f"  {count:4} packets | {unique_count:4} unique | {domain}")
-            
+
+    possible_exfil_domains = []
+
+    for domain, names in unique_subdomains.items():
+        if len(names) < 10:
+            continue
+
+        avg_len = sum(len(name) for name in names) / len(names)
+        longest = max(len(name) for name in names)
+
+        if avg_len > 45 or longest > 90:
+            possible_exfil_domains.append((domain, len(names), avg_len, longest))
+
+    if possible_exfil_domains:
+        print("\nPossible DNS exfiltration domains:")
+        possible_exfil_domains.sort(key=lambda x: x[1], reverse=True)
+
+        for domain, unique_count, avg_len, longest in possible_exfil_domains[:10]:
+            print(
+                f"  {domain}: {unique_count} unique queries, "
+                f"avg length {avg_len:.1f}, longest {longest}"
+            )
+
+    if suspicious:
+        print("\nSuspicious DNS queries:")
+        for item in suspicious[:25]:
+            reasons = ", ".join(item["reasons"])
+            print(
+                f"  frame {item['frame']}: "
+                f"{item['src']} -> {item['dst']} "
+                f"{item['query']} ({reasons})"
+            )
+
+    if txt_records:
+        print("\nTXT records:")
+        for item in txt_records[:20]:
+            print(
+                f"  frame {item['frame']}: "
+                f"{item['src']} -> {item['dst']} "
+                f"{item['txt']}"
+            )
