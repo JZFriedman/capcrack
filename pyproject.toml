@@ -4,11 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "capcrack"
-version = "0.1.0"
+version = "0.1.1"
 description = "A CTF-focused PCAP triage helper"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "scapy>=2.5.0",
+]
 
 [project.scripts]
 capcrack = "capcrack.cli:main"
