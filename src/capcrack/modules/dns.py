@@ -20,6 +20,10 @@ COMMON_QTYPES = {
 
 HEX_RE = re.compile(r"^[0-9a-fA-F]{16,}$")
 BASE64ISH_RE = re.compile(r"^[A-Za-z0-9_-]{20,}={0,2}$")
+KNOWN_DOMAINS = {
+    "cityinthe.cloud",
+    # add more known/expected domains here
+}
 
 
 def qtype_name(value):
@@ -89,6 +93,62 @@ def analyze_query_name(qname):
     return reasons
 
 
+def normalize_domain(domain):
+    return domain.strip().strip(".").lower()
+
+
+def levenshtein(a, b):
+    """
+    Dependency-free edit distance.
+
+    Returns the number of single-character insertions, deletions, or
+    substitutions needed to turn a into b.
+    """
+    if a == b:
+        return 0
+
+    if len(a) < len(b):
+        a, b = b, a
+
+    previous = list(range(len(b) + 1))
+
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+
+        for j, cb in enumerate(b, start=1):
+            insert_cost = current[j - 1] + 1
+            delete_cost = previous[j] + 1
+            replace_cost = previous[j - 1] + (ca != cb)
+
+            current.append(min(insert_cost, delete_cost, replace_cost))
+
+        previous = current
+
+    return previous[-1]
+
+
+def close_known_domain(domain, known_domains, max_distance=1):
+    """
+    Return close known-domain matches.
+    """
+    domain = normalize_domain(domain)
+
+    matches = []
+
+    for known in known_domains:
+        known = normalize_domain(known)
+
+        if domain == known:
+            continue
+
+        distance = levenshtein(domain, known)
+
+        if distance <= max_distance:
+            matches.append((known, distance))
+
+    return matches
+
+
 def run_dns(pcap):
     fields = [
         "frame.number",
@@ -138,6 +198,22 @@ def run_dns(pcap):
             bd = base_domain(qname)
             base_domain_counts[bd] += 1
             unique_subdomains[bd].add(qname)
+
+            close_matches = close_known_domain(bd, KNOWN_DOMAINS, max_distance=1)
+
+            if close_matches:
+                for known, distance in close_matches:
+                    suspicious.append(
+                        {
+                            "frame": row.get("frame.number", ""),
+                            "src": row.get("ip.src", ""),
+                            "dst": row.get("ip.dst", ""),
+                            "query": qname,
+                            "reasons": [
+                                f"domain resembles {known} with edit distance {distance}"
+                            ],
+                        }
+                    )
 
             reasons = analyze_query_name(qname)
             if reasons:
